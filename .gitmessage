@@ -1,0 +1,20 @@
+# <type>(<scope>): <subject>
+#
+# ------------------------------------------------------------
+# Type: feat | fix | refactor | docs | style | test | chore | perf | ci | revert
+# Scope: auth | api | infra | nginx | uba | pipeline | llm | dashboard | kms | db | ci | docs
+# Subject: 50자 이내, 마침표 없이, 명령형/현재형
+# 예시) fix(auth): 회원가입 DTO 필드 불일치 수정
+# ------------------------------------------------------------
+#
+# Body (선택, 한 줄 72자 이내):
+# - 무엇보다 왜 바꿨는지 설명
+# - 구현 상세 나열보다 의도/배경 우선
+#
+#
+# ------------------------------------------------------------
+# Footer (선택):
+# - Closes #N
+# - Refs #N
+# - BREAKING CHANGE: 호환성 깨지는 변경
+#
