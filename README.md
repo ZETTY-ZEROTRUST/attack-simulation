@@ -22,8 +22,8 @@ attack-payload/
 ├── lib/
 │   ├── http_client.py    # 공통 HTTP wrapper (XFF 위조 + 재시도)
 │   ├── ip_pool.py        # 분산 IP 풀 생성 (S5용)
-│   ├── target_pool.py    # victim sub 풀 (sequential / shuffled)
-│   └── token_forge.py    # JWT ES256 위조 (forge_token / forge_token_with_jti)
+│   ├── target_pool.py    # victim sub 풀 (순차 / 랜덤 선택, VICTIM_COUNT 적용)
+│   └── token_forge.py    # JWT ES256 위조 (forge_token)
 └── scenarios/            # 공격 시나리오 (각각 단독 실행 가능)
     ├── s2_token_hijack.py            # JWT 토큰 하이재킹 (진짜 로그인 기반)
     ├── s4_enumeration.py             # 서명키 탈취 + 즉시 enumeration
@@ -49,7 +49,8 @@ cp .env.example .env       # 개인 환경값으로 수정
 | `ZETI_ALB_URL` | 공격 대상 ALB DNS (모든 시나리오 공통, S2는 `/auth/login`도 동일 경로) |
 | `LEAKED_KEY_PATH` | **S4/S5/S6용** 위조 서명 개인키 경로 (S2는 사용 안 함) |
 | `KID` | KMS alias (위조 서명 헤더 `kid`로 박힘) |
-| `VICTIM_SUB_START` / `VICTIM_SUB_END` | enumeration 풀 범위 (기본 140000002~140000500, 498명) |
+| `VICTIM_SUB_START` / `VICTIM_SUB_END` | 접근 가능한 사용자 id 범위 (기본 140000002~140000500 → 498명) |
+| `VICTIM_COUNT` | 위 범위 안에서 실제로 공격할 사용자 수 (S4/S5/S5b/S6 공통, 각 1회 방문). `.env.example`의 sample은 100, 비우면 범위 전체(=498). S2는 무관 |
 | `VICTIM_EMAIL` / `VICTIM_PASSWORD` | **S2 전용**, 운영 RDS에서 골라온 실계정 credentials |
 | `S4_SOURCE_IP` 외 | 시나리오별 XFF 위조용 source IP (아래 IP 색깔 매트릭스 참고) |
 | `S5_IP_POOL_SIZE` | S5/S5b 분산 IP 풀 크기 (0이면 `victim_count × 0.68` 자동) |
@@ -61,10 +62,10 @@ cp .env.example .env       # 개인 환경값으로 수정
 | ID | 이름 | source IP (prefix) | endpoint | 페이스 | 가동 시간 | 풀 | 패턴 |
 |---|---|---|---|---|---|---|---|
 | **S2** | Token Hijack | victim `222.110.15.50` (KT residential) → attacker `101.235.1.77` (Public WiFi / Cafe) | `/api/users/me`, `/api/orders/{sub}`, `/api/addresses/{sub}` | 1단계: 15~45s sleep / 2단계: 2~5s burst | 1단계 5분 + 2단계 ~30초 | 단일 victim 1명 | **같은 jti** 공유, 회선 점프 (집 → 카페) |
-| **S4** | Enumeration | `15.164.10.40` (AWS Seoul) 단일 | `/api/addresses/{sub}` | 1.0 RPS (분당 60건) | ~8분 (498건) | 498명 sequential | 단일 클라우드 인스턴스에서 기계적 열거 |
-| **S5** | Distributed Enum (IP 분산, sub 순차) | 4종 prefix 풀 ~340개 (random per request) | `/api/addresses/{sub}` | `--duration` 주면 자동, 기본 1.0s | 498건 (풀 1회 순회) | 498명 sequential | **IP만 분산, sub는 풀 1회 순차 순회** (어설픈 공격자) |
-| **S5b** | Distributed Enum (IP+sub random) | 위 동일 풀, random per request | `/api/addresses/{sub}` | 위 동일 | 498건 (sub random) | 498명 (매번 random) | **매 요청 victim/IP 모두 random** (쿠팡 분포) |
-| **S6** | Slow & Low | `98.138.10.66` (US Residential / Comcast 류) 단일 | `/api/addresses/{sub}` | 30~60s sleep (분당 1~2건) | 24시간 (시연 6h) | 498명 shuffled | 낮은 빈도 + **Impossible Travel** (한국 사용자 풀을 미국 IP로 조회) |
+| **S4** | Enumeration | `15.164.10.40` (AWS Seoul) 단일 | `/api/addresses/{sub}` | 1.0 RPS (분당 60건) | `VICTIM_COUNT`건 (sample 100 = ~1분 40초 / 풀 전체 498 = ~8분) | `VICTIM_COUNT`명 순차 | 단일 클라우드 인스턴스에서 기계적 열거 |
+| **S5** | Distributed Enum (IP 분산, sub 순차) | 4종 prefix 풀 (random per request) | `/api/addresses/{sub}` | `--duration` 주면 자동, 기본 1.0s | `VICTIM_COUNT`건 (각 1회) | `VICTIM_COUNT`명 순차 | **IP만 분산, sub는 순차 순회** (어설픈 공격자) |
+| **S5b** | Distributed Enum (IP 분산, sub random) | 위 동일 풀, random per request | `/api/addresses/{sub}` | 위 동일 | `VICTIM_COUNT`건 (각 1회) | `VICTIM_COUNT`명 랜덤 추출 | **victim은 랜덤 비복원 추출 1회씩, IP는 매 요청 random** |
+| **S6** | Slow & Low | `98.138.10.66` (US Residential / Comcast 류) 단일 | `/api/addresses/{sub}` | 30~60s sleep (분당 1~2건) | 24시간 (시연 6h) | `VICTIM_COUNT`명 랜덤 추출 | 낮은 빈도 + **Impossible Travel** (한국 사용자 풀을 미국 IP로 조회) |
 
 ### IP 색깔 매트릭스 (실전 ASN 기반, prefix만 봐도 시나리오 식별)
 
@@ -138,8 +139,8 @@ victim 풀을 순차로 긁어내려는 "고전적 enumeration".
 | endpoint | `/api/addresses/{sub}` 단일 (현관비번+주소+전화+이름 묶음) |
 | 토큰 위조 | `forge_token(sub, ttl=600)` — **매 호출마다 새 jti** (jti 기반 탐지 회피) |
 | 페이스 | `rps=1.0` → 1초당 1건 = 분당 60건 |
-| 가동 시간 | 30분 (시연 15분) |
-| victim 풀 | `get_sequential_pool()` — 140000002 → 140000500 순차 |
+| 가동 시간 | `--duration` 또는 pool(`VICTIM_COUNT`명) 소진 시 종료 (기본 sample 100 = ~1분 40초) |
+| victim 풀 | `get_sequential_pool()` — `VICTIM_SUB_START`부터 `VICTIM_COUNT`명 순차 |
 
 **기대 탐지 신호**:
 - t=05:00, **IP-사용자다양성(5분 윈도우) override 100** → Slack 즉시
@@ -156,25 +157,25 @@ python scenarios/s4_enumeration.py --duration 15 --rps 1.0
 ### S5 / S5b — 분산 Enumeration (두 변종)
 
 쿠팡 사고(2,300 IP × 3,367 계정, IP : 계정 ≈ 0.68 : 1)의 IP 분포 구조를 비례 축소해
-재현하되, **호출 방식 자체는 S4와 통일**(풀 크기 = 498건, 1초 간격)해 UBA factor의
-차이를 깨끗하게 비교한다. **공격자의 회피 수준**만 두 변종으로 분리:
+재현하되, **호출 방식 자체는 S4와 통일**(각 사용자 1회, `VICTIM_COUNT`건, 1초 간격)해
+UBA factor의 차이를 깨끗하게 비교한다. **공격자의 회피 수준**만 두 변종으로 분리:
 
 | 변종 | 파일 | IP | sub 선택 | 회피하지 못하는 신호 |
 |---|---|---|---|---|
-| **S5** (어설픈 공격자) | `scenarios/s5_distributed.py` | 풀 random | **순차 1회 순회** | **풀 합산 sub 단조 패턴** (글로벌 시퀀스 factor에 잡힘) |
-| **S5b** (완전 분산 botnet) | `scenarios/s5b_distributed_random.py` | 풀 random | **random per request** | `F-FirstSeen-Sensitive` 등 보완 factor |
+| **S5** (어설픈 공격자) | `scenarios/s5_distributed.py` | 풀 random | **`START`부터 순차 순회** | **풀 합산 sub 단조 패턴** (글로벌 시퀀스 factor에 잡힘) |
+| **S5b** (분산 botnet) | `scenarios/s5b_distributed_random.py` | 풀 random | **랜덤 비복원 추출** | `F-FirstSeen-Sensitive` 등 보완 factor |
 
 공통 사항:
 - source IP 풀: `lib/ip_pool.get_distributed_ips()` — `203.0.113`(/24) · `198.51.100`(/24) · `192.0.2`(/24) · `45.32.x`(/16, Vultr), 옥텟 **100~254**
-- IP 풀 크기: `S5_IP_POOL_SIZE` (기본 0 → `victim_count × 2300/3367 ≈ 0.68` 자동 = 약 340)
-- 총 호출 수: **498건** (S4와 동일, 풀 크기 = `VICTIM_SUB_END - VICTIM_SUB_START`)
+- IP 풀 크기: `S5_IP_POOL_SIZE` (기본 0 → `VICTIM_COUNT × 2300/3367 ≈ 0.68` 자동. sample 100이면 약 68개 / 풀 전체 498이면 약 340개)
+- 총 호출 수: **`VICTIM_COUNT`건** (S4·S5·S5b 동일 — 각 사용자 1회 방문)
 - endpoint: `/api/addresses/{sub}` 단일
 - 토큰: `forge_token(sub)` — 매 호출 새 jti (서명키 탈취 가정)
-- 페이스: `--duration N`(분) 주면 자동, 기본 1.0s (S4와 동일, 분당 60건, ~8분 소요)
+- 페이스: `--duration N`(분) 주면 자동, 기본 1.0s (S4와 동일, 분당 60건)
 
 #### S5 — IP 분산, sub 순차
 
-`victims = [140000002 .. 140000499]` 풀을 **1회 순차 순회**. 매 호출의 IP는 풀에서 random
+`VICTIM_SUB_START`부터 `VICTIM_COUNT`명을 **1회 순차 순회**. 매 호출의 IP는 풀에서 random
 추출. **각 IP에서는 sub가 random하게 흩어져 보이지만, 글로벌 시퀀스(전 IP 합산)를 합치면
 sub가 단조 증가**.
 
@@ -182,18 +183,21 @@ sub가 단조 증가**.
 "IP만 가린 어설픈 공격자" 메시지. UBA의 글로벌 시퀀스 분석 능력 검증용.
 
 ```bash
-python scenarios/s5_distributed.py                  # 기본 (interval 1.0s, ~8분)
-python scenarios/s5_distributed.py --duration 30    # 30분 안에 끝내기
+python scenarios/s5_distributed.py                  # 기본 (interval 1.0s, VICTIM_COUNT건 = sample 100건 ≈ 1분 40초)
+python scenarios/s5_distributed.py --duration 30    # 30분에 맞춰 페이스 자동
 python scenarios/s5_distributed.py --interval 0.2   # 짧게 빠르게
 ```
 
-#### S5b — IP 분산 + sub random (완전 분산)
+#### S5b — IP 분산 + sub random (분산 botnet)
 
-매 요청마다 victim/IP 모두 `rng.choice()`. **단일 IP factor도, sub 시퀀스 factor도 못 잡음**.
-FirstSeen 같은 보완 factor 없으면 탐지 사각지대 — 그 사각지대를 데이터로 입증.
+`[START, END)` 범위에서 `VICTIM_COUNT`명을 **랜덤 비복원 추출**해 각 1회씩 조회. IP는 매 요청
+random. sub가 랜덤 순서라 글로벌 단조 패턴이 없어 **단일 IP factor도, sub 시퀀스 factor도
+못 잡음**. FirstSeen 같은 보완 factor 없으면 탐지 사각지대 — 그 사각지대를 데이터로 입증.
 
 **기대 탐지**: 단일 IP 다양성 → 0점 / 글로벌 시퀀스도 → 0점 / **F-FirstSeen-Sensitive 등 보완 factor만 발동 기대**.
-"완전 분산 botnet" 메시지. 보완 factor 필요성 입증.
+"완전 분산" 메시지. 보완 factor 필요성 입증.
+
+> 한 계정을 여러 번 조회하는 쿠팡식 복원추출 분포가 필요하면 별도 시나리오로 추가 예정.
 
 ```bash
 python scenarios/s5b_distributed_random.py
@@ -215,8 +219,8 @@ python scenarios/s5b_distributed_random.py --interval 0.2
 | endpoint | `/api/addresses/{sub}` 단일 |
 | 토큰 위조 | `forge_token(sub)` — 매 호출 새 jti |
 | 페이스 | `random.uniform(30, 60)` 초 sleep — 분당 1~2건 |
-| 가동 시간 | 24시간 (시연 6시간 압축) |
-| victim 풀 | `get_shuffled_pool(seed=42)` — 랜덤 셔플로 순차 패턴 숨김 |
+| 가동 시간 | `--duration` 또는 pool(`VICTIM_COUNT`명) 소진 시 종료 (sample 100 = ~1~2h / 풀 전체 498 = 6h 안에 소진) |
+| victim 풀 | `get_shuffled_pool(seed=42)` — 범위에서 `VICTIM_COUNT`명 랜덤 비복원 추출 (순차 패턴 숨김) |
 
 **기대 탐지 신호**:
 - 첫 1시간: 5분 윈도우 미달 → 모든 신호 0점 (의도된 사각지대)

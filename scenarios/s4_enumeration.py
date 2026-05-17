@@ -2,14 +2,15 @@
 S4 — 서명키 탈취 + 즉시 Enumeration.
 
 행위:
-- 단일 IP에서 victim sub를 순차로 돌면서 매번 새 토큰 위조
-- 분당 60건 페이스
-- 약 30분 가동 → 1,800명 데이터 확보
+- 단일 IP에서 victim sub를 순차로 돌면서 매번 새 토큰 위조 (forge_token)
+- 분당 60건 페이스 (--rps 1.0)
+- 풀(`VICTIM_COUNT`명) 소진 또는 --duration 도달 시 종료
+  (기본 --duration 30, VICTIM_COUNT=100이면 약 1분 40초에 소진)
 
 기대 탐지:
 - t=05:00 IP-사용자다양성(5분) override 100 → Slack 즉시
 - t=05:30 Haiku 인시던트 리포트 발행
-- MTTD 목표: 5~15분
+- MTTD 목표: 5~15분 (충분한 신호량 확보를 위해 VICTIM_COUNT 충분히 크게 설정 권장)
 """
 import os
 import sys

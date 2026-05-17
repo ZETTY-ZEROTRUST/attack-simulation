@@ -3,7 +3,7 @@ S5 — IP Pool 분산 + sub 순차 (어설픈 공격자).
 
 행위:
 - IP 풀에서 매 요청 random 추출 (단일 IP factor 회피)
-- sub는 풀을 1회만 순차 enumeration (140000002 → 140000499)
+- sub는 풀을 1회만 순차 enumeration (`VICTIM_SUB_START`부터 `VICTIM_COUNT`명)
 - 매 호출마다 새 jti (key 탈취 가정, forge_token)
 
 회피하는 신호:
@@ -18,13 +18,13 @@ S5 — IP Pool 분산 + sub 순차 (어설픈 공격자).
     "IP만 가렸지만 sub 시퀀스를 빠뜨린 어설픈 공격자". 글로벌 sub-시퀀스
     factor 필요성을 데이터로 입증하는 시나리오.
 
-S4 / S5b와의 차이:
-    S4  — 단일 IP, sub 순차 1회 순회 (498건)
-    S5  — IP 분산,  sub 순차 1회 순회 (498건)   ← 이 파일
-    S5b — IP 분산,  sub random      (498건)
+S4 / S5b와의 차이 (셋 다 각 사용자 정확히 1회 방문, 총 `VICTIM_COUNT`건):
+    S4  — 단일 IP, sub 순차
+    S5  — IP 분산,  sub 순차              ← 이 파일
+    S5b — IP 분산,  sub random 비복원 추출
 
-세 시나리오 모두 총 호출량(498건)과 호출 방식이 동일. 다른 건 IP/ sub
-선택 전략뿐 — UBA factor 차이를 깨끗하게 비교하기 위한 통일된 구조.
+세 시나리오 모두 총 호출량(`VICTIM_COUNT`건)과 호출 방식이 동일. 다른 건
+IP / sub 선택 전략뿐 — UBA factor 차이를 깨끗하게 비교하기 위한 통일된 구조.
 """
 import os
 import sys

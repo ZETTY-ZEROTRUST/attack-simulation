@@ -2,15 +2,16 @@
 S6 — Slow & Low (쿠팡 7개월 미탐지 재현).
 
 행위:
-- 단일 IP에서 분당 1~2건 페이스로 sleep
-- sub는 랜덤 셔플 → 순차 패턴도 숨김
-- 24시간 가동 → 약 2,000명 데이터 확보
+- 단일 IP에서 분당 1~2건 페이스로 sleep (--min/max-interval 30~60s)
+- sub는 [START, END) 범위에서 `VICTIM_COUNT`명 랜덤 비복원 추출 → 순차 패턴 숨김
+- 최대 24시간 가동 (--duration). 풀(`VICTIM_COUNT`명) 소진 또는 duration 도달 시 종료
+  (VICTIM_COUNT=100이면 분당 1~2건 × 60 × 1~2h ≈ 1~2시간이면 풀 소진)
 
 기대 탐지:
 - 첫 1시간: 5분 윈도우 미달, 모든 신호 0점
 - t=01:00: 1시간 윈도우 의심 단계 (70)
 - t=24:00: 24시간 윈도우 override 100 + 누적유출량 z-score 폭증
-- MTTD 목표: 수 시간 ~ 24h
+- MTTD 목표: 수 시간 ~ 24h (장기 윈도우 검증 시 VICTIM_COUNT 충분히 크게 설정 권장)
 """
 import os
 import sys

