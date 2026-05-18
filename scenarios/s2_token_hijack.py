@@ -32,6 +32,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from lib.http_client import get_session, call_api
+from lib.result_writer import ResultWriter
 from lib.token_utils import decode_payload
 
 load_dotenv(_ROOT / ".env")
@@ -98,73 +99,70 @@ def run_s2(
             f"jwt.expiration을 늘리세요."
         )
 
-    print(
-        f"[S2] === 1단계: Victim 정상 활동 "
-        f"({victim_phase_minutes}분, X-Forwarded-For={victim_ip}) ==="
-    )
-
-    # 1단계 — victim source IP에서 정상 패턴 (자기 자원 조회)
-    phase1_end = time.time() + victim_phase_minutes * 60
+    writer = ResultWriter("S2")
     phase1_count = 0
-    try:
-        while time.time() < phase1_end:
-            path = random.choices(
-                [
-                    "/api/users/me",
-                    f"/api/orders/{victim_id}",
-                    f"/api/addresses/{victim_id}",
-                ],
-                weights=[7, 2, 1],
-            )[0]
-            try:
-                resp = call_api(session, path, access_token, src_ip=victim_ip)
-                phase1_count += 1
-                if resp.status_code != 200:
-                    print(
-                        f"[S2-P1] non-200 status={resp.status_code} path={path}"
-                    )
-            except Exception as e:
-                print(f"[S2-P1] error: {e}")
-            time.sleep(random.uniform(15, 45))
-    except KeyboardInterrupt:
-        print(f"\n[S2] 사용자 중단 (1단계 중)")
-        return
-
-    print(f"[S2] 1단계 종료 — {phase1_count}건 정상 호출")
-    print(
-        f"[S2] === 2단계: 공격자 탈취 후 burst "
-        f"({attacker_burst}건, X-Forwarded-For={attacker_ip}) ==="
-    )
-
-    # 2단계 — 같은 token, 다른 source IP에서 민감 정보 burst
     phase2_count = 0
     try:
-        for i in range(attacker_burst):
-            path = random.choice(
-                [
-                    f"/api/addresses/{victim_id}",
-                    f"/api/orders/{victim_id}",
-                    "/api/users/me",
-                ]
-            )
-            try:
-                resp = call_api(session, path, access_token, src_ip=attacker_ip)
-                phase2_count += 1
-                print(
-                    f"[S2-P2] burst {i+1}/{attacker_burst}  "
-                    f"path={path}  status={resp.status_code}"
-                )
-            except Exception as e:
-                print(f"[S2-P2] error: {e}")
-            time.sleep(random.uniform(2, 5))
-    except KeyboardInterrupt:
-        print(f"\n[S2] 사용자 중단 (2단계 중)")
+        print(
+            f"[S2] === 1단계: Victim 정상 활동 "
+            f"({victim_phase_minutes}분, X-Forwarded-For={victim_ip}) ==="
+        )
 
-    print(f"[S2] 종료 — 1단계 {phase1_count}건, 2단계 burst {phase2_count}건")
-    print(
-        f"[S2] 기대 탐지: 동일 jti({jti[:8]}...)가 두 IP "
-        f"({victim_ip} → {attacker_ip})에서 관측 → F-TokenHijack 발동"
-    )
+        # 1단계 — victim source IP에서 정상 패턴 (자기 자원 조회)
+        phase1_end = time.time() + victim_phase_minutes * 60
+        try:
+            while time.time() < phase1_end:
+                path = random.choices(
+                    [
+                        "/api/users/me",
+                        f"/api/orders/{victim_id}",
+                        f"/api/addresses/{victim_id}",
+                    ],
+                    weights=[7, 2, 1],
+                )[0]
+                try:
+                    resp = call_api(session, path, access_token, src_ip=victim_ip)
+                    writer.record(victim_id, victim_ip, "GET", path, resp, phase="P1")
+                    phase1_count += 1
+                except Exception as e:
+                    writer.record_error(victim_id, victim_ip, path, e, phase="P1")
+                time.sleep(random.uniform(15, 45))
+        except KeyboardInterrupt:
+            print(f"\n[S2] 사용자 중단 (1단계 중)")
+            return
+
+        print(f"[S2] 1단계 종료 — {phase1_count}건 정상 호출")
+        print(
+            f"[S2] === 2단계: 공격자 탈취 후 burst "
+            f"({attacker_burst}건, X-Forwarded-For={attacker_ip}) ==="
+        )
+
+        # 2단계 — 같은 token, 다른 source IP에서 민감 정보 burst
+        try:
+            for i in range(attacker_burst):
+                path = random.choice(
+                    [
+                        f"/api/addresses/{victim_id}",
+                        f"/api/orders/{victim_id}",
+                        "/api/users/me",
+                    ]
+                )
+                try:
+                    resp = call_api(session, path, access_token, src_ip=attacker_ip)
+                    writer.record(victim_id, attacker_ip, "GET", path, resp, phase="P2")
+                    phase2_count += 1
+                except Exception as e:
+                    writer.record_error(victim_id, attacker_ip, path, e, phase="P2")
+                time.sleep(random.uniform(2, 5))
+        except KeyboardInterrupt:
+            print(f"\n[S2] 사용자 중단 (2단계 중)")
+    finally:
+        writer.close()
+        print(f"[S2] 종료 — 1단계 {phase1_count}건, 2단계 burst {phase2_count}건")
+        print(
+            f"[S2] 기대 탐지: 동일 jti({jti[:8]}...)가 두 IP "
+            f"({victim_ip} → {attacker_ip})에서 관측 → F-TokenHijack 발동"
+        )
 
 
 if __name__ == "__main__":

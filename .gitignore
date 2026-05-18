@@ -1,6 +1,7 @@
 .env
 leaked-key/*.pem
 leaked-key/*.der
+results/
 
 __pycache__/
 *.pyc
