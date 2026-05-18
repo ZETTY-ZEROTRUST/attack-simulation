@@ -13,13 +13,14 @@ S5b — IP Pool 분산 + sub random 선택 (분산 enumeration).
 - jti 재사용 — 매번 새 jti
 
 회피하지 못하는 신호:
-- F-FirstSeen-Sensitive (신규 IP × 민감 endpoint) → 발동 기대
-- (호출량 자체가 baseline 대비 비정상이라면) 누적유출량 z-score
+- **ASN 단위 다양성 (Route B)** — sub를 랜덤화해도 ip_asn으로 재집계하면
+  한 ASN의 unique sub 수는 그대로다 (Route B는 sub 순서가 아니라 개수를
+  센다). 그래서 S5(순차)·S5b(랜덤)를 동일하게 잡는다.
+- (구 설계 메모) "F-FirstSeen-Sensitive" 보완 factor는 구현돼 있지 않다 —
+  Route B가 분산 enumeration 탐지를 담당한다.
 
 핵심 메시지:
-    "완전 분산 — 단일 IP factor도, sub 시퀀스 factor도 못 잡음".
-    FirstSeen 같은 보완 factor 없으면 탐지 사각지대. 본 시뮬은 그 사각지대를
-    재현해 보완 factor 필요성을 데이터로 보여준다.
+    "완전 분산(IP 풀 + sub 랜덤) 공격도 UBA의 ASN 단위 다양성(Route B)으로 탐지".
 
 S4 / S5와의 차이 (셋 다 각 사용자 정확히 1회 방문, 총 VICTIM_COUNT건):
     S4  — 단일 IP, sub 순차

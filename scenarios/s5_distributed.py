@@ -10,13 +10,14 @@ S5 — IP Pool 분산 + sub 순차 (어설픈 공격자).
 - 단일 IP × 다수 sub (5분 윈도우 다양성) — 풀 분산으로 회피
 
 회피하지 못하는 신호:
-- **풀 합산 sub 단조 패턴** — 매 IP는 random sub처럼 보이지만, 글로벌 시퀀스를
-  합치면 sub가 순차로 증가하는 게 보임
-- F-FirstSeen-Sensitive (신규 IP × 민감 endpoint) → 발동 기대
+- **ASN 단위 다양성 (Route B)** — IP는 풀로 흩었지만 그 IP들이 속한 ASN
+  (호스팅/VPS 사업자)은 소수다. UBA가 ip_asn으로 재집계하면 한 ASN에서
+  다수 sub 조회가 드러나 ip_user_diversity가 발동한다.
+- (구 설계 메모) "글로벌 sub-시퀀스 factor"는 factor_engine에 구현돼 있지
+  않다 — Route B(ASN 다양성)가 그 자리를 대신해 S5를 탐지한다.
 
 핵심 메시지:
-    "IP만 가렸지만 sub 시퀀스를 빠뜨린 어설픈 공격자". 글로벌 sub-시퀀스
-    factor 필요성을 데이터로 입증하는 시나리오.
+    "IP만 가린 분산 enumeration". UBA의 ASN 단위 다양성 집계(Route B)로 탐지된다.
 
 S4 / S5b와의 차이 (셋 다 각 사용자 정확히 1회 방문, 총 `VICTIM_COUNT`건):
     S4  — 단일 IP, sub 순차
