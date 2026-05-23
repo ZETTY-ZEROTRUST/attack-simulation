@@ -1,0 +1,49 @@
+name: CI — attack-simulation (lint only, no deploy)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Python syntax + smoke import
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: pip install runtime deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: py_compile (scenarios + lib)
+        run: |
+          find scenarios lib -name "*.py" -exec python -m py_compile {} +
+
+      - name: smoke import — lib 모듈
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, '.')
+          from lib import http_client, token_utils, target_pool, result_writer
+          # token_forge 는 LEAKED_KEY_PATH env 없으면 lazy 라 import 만 OK
+          import lib.token_forge
+          # ip_pool 도 모듈 자체는 import 가능
+          import lib.ip_pool
+          print("OK: all lib modules import")
+          PY
+
+      - name: scenarios 모듈 syntax (import 안 함 — env·ALB 의존)
+        run: |
+          for f in scenarios/*.py; do
+            python -m py_compile "$f" && echo "  OK $f"
+          done
