@@ -58,7 +58,7 @@ flowchart LR
     subgraph VPC["ZETI VPC"]
         ALB -->|80| NGX[Nginx PEP<br/>priv-web-2a/2b]
         NGX -->|8081| API[api-server<br/>priv-app]
-        NGX -.access.log.-> FB[Filebeat sidecar]
+        NGX -.->|access.log| FB[Filebeat sidecar]
         FB -.5044.-> ELK[(ELK<br/>priv-monitor)]
     end
     ELK -->|9200| UBA[UBA Python]
@@ -372,6 +372,7 @@ python demo_s5.py    # S5 + SSM trigger → ~5분 후 Slack
 | [`backend`](https://github.com/ZETTY-ZEROTRUST/backend) | 의도된 4 취약점 + IDOR endpoint 들 — **공격 대상** |
 | [`log-pipeline`](https://github.com/ZETTY-ZEROTRUST/log-pipeline) | XFF 위조 트래픽을 `asn-classify` 가 ip_class 분류 — **분류 검증** |
 | [`uba-analyzer`](https://github.com/ZETTY-ZEROTRUST/uba-analyzer) | 7 factor + LLM 으로 본 시뮬 트래픽 잡아냄 — **탐지 검증** |
+| [`zero-trust-architecture`](https://github.com/ZETTY-ZEROTRUST/zero-trust-architecture) | AWS 인프라 IaC — 시뮬 트래픽이 흐르는 ALB + WAF + Nginx PEP + KMS 정의 — **공격 대상 환경 정의** |
 | [`.github`](https://github.com/ZETTY-ZEROTRUST/.github) | Org Overview README |
 
 ---
