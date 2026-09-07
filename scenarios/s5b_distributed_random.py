@@ -101,7 +101,7 @@ def run_s5b(
             # victim은 사전 추출된 표본을 1회씩, IP만 매 요청 랜덤
             src_ip = rng.choice(ip_pool)
             token = forge_token(victim_id)
-            path = f"/api/addresses/{victim_id}"
+            path = "/api/addresses"
 
             try:
                 resp = call_api(session, path, token, src_ip=src_ip)

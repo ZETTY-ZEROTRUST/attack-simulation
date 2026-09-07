@@ -1,8 +1,9 @@
 """
-S4 — 서명키 탈취 + 즉시 Enumeration.
+S4 — 서명키 탈취 + 즉시 다계정 접근.
 
 행위:
 - 단일 IP에서 victim sub를 순차로 돌면서 매번 새 토큰 위조 (forge_token)
+- 위조 토큰의 sub로 자기 자원 endpoint(`/api/addresses`) 호출
 - 분당 60건 페이스 (--rps 1.0)
 - 풀(`VICTIM_COUNT`명) 소진 또는 --duration 도달 시 종료
   (기본 --duration 30, VICTIM_COUNT=100이면 약 1분 40초에 소진)
@@ -61,8 +62,8 @@ def run_s4(duration_minutes: int = 30, rps: float = 1.0):
 
             victim_id = pool[pool_idx]
             token = forge_token(victim_id)
-            # AddressResponse — 현관비번+주소+전화+이름 묶음 (F-Resp High 패턴)
-            path = f"/api/addresses/{victim_id}"
+            # 위조 token의 sub가 조회 대상을 결정한다. 별도 사용자 ID 경로는 사용하지 않는다.
+            path = "/api/addresses"
 
             try:
                 resp = call_api(session, path, token, src_ip=src_ip)
@@ -77,7 +78,7 @@ def run_s4(duration_minutes: int = 30, rps: float = 1.0):
     finally:
         writer.close()
 
-    print(f"[S4] 종료 — {pool_idx}명 enumeration")
+    print(f"[S4] 종료 — {pool_idx}개 위조 subject 접근")
 
 
 if __name__ == "__main__":

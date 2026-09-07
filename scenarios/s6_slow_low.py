@@ -4,6 +4,7 @@ S6 — Slow & Low (쿠팡 7개월 미탐지 재현).
 행위:
 - 단일 IP에서 분당 1~2건 페이스로 sleep (--min/max-interval 30~60s)
 - sub는 [START, END) 범위에서 `VICTIM_COUNT`명 랜덤 비복원 추출 → 순차 패턴 숨김
+- 각 sub로 위조한 토큰을 자기 자원 endpoint(`/api/addresses`)에 사용
 - 최대 24시간 가동 (--duration). 풀(`VICTIM_COUNT`명) 소진 또는 duration 도달 시 종료
   (VICTIM_COUNT=100이면 분당 1~2건 × 60 × 1~2h ≈ 1~2시간이면 풀 소진)
 
@@ -71,7 +72,7 @@ def run_s6(
 
             victim_id = pool[pool_idx]
             token = forge_token(victim_id)
-            path = f"/api/addresses/{victim_id}"
+            path = "/api/addresses"
 
             try:
                 resp = call_api(session, path, token, src_ip=src_ip)

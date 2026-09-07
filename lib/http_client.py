@@ -42,7 +42,7 @@ def call_api(
     Parameters
     ----------
     session  : requests.Session
-    path     : 호출 경로 (예: "/api/addresses/140000002")
+    path     : 호출 경로 (예: "/api/addresses")
     token    : 위조 JWT
     src_ip   : 선택. 주어지면 X-Forwarded-For 헤더에 박는다.
                ASN map override에 등록된 IP를 넣어야 UBA factor에서 정상 동작.

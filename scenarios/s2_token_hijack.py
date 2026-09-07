@@ -11,7 +11,7 @@ S2 — JWT 토큰 하이재킹 (진짜 로그인 기반).
 - forge_token 안 씀 — auth-server가 발급한 실제 토큰을 그대로 사용. jti/iat 등도 진짜.
 - 같은 access token이 두 IP에서 관측되는 게 본질 — 서명/jti가 동일하므로 UBA는
   "같은 토큰의 회선 점프"로 인식 가능.
-- IDOR 활용 없음 — victim 본인의 user_id에 대한 자원만 조회 (자기 데이터).
+- path 사용자 ID 없이 victim token `sub`의 자기 자원만 조회.
 
 기대 탐지:
 - F-TokenHijack: 동일 jti(또는 access token hash)가 5분 내 서로 다른 IP/ASN에서 관측 → raw 100
@@ -115,8 +115,8 @@ def run_s2(
                 path = random.choices(
                     [
                         "/api/users/me",
-                        f"/api/orders/{victim_id}",
-                        f"/api/addresses/{victim_id}",
+                        "/api/orders",
+                        "/api/addresses",
                     ],
                     weights=[7, 2, 1],
                 )[0]
@@ -142,8 +142,8 @@ def run_s2(
             for i in range(attacker_burst):
                 path = random.choice(
                     [
-                        f"/api/addresses/{victim_id}",
-                        f"/api/orders/{victim_id}",
+                        "/api/addresses",
+                        "/api/orders",
                         "/api/users/me",
                     ]
                 )
