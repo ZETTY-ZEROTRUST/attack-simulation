@@ -5,7 +5,7 @@ S8 — 비정상 장수명 토큰 (서명키 탈취 후 만료 회피).
 - 단일 IP에서 forge_token 으로 토큰을 위조하되, TTL 을 정상(600s) 대신
   비정상적으로 길게(기본 7200s = 2h) 발급한다.
 - 키를 탈취한 공격자는 매번 재위조하는 churn 을 줄이려 "오래 사는" 토큰을 만든다.
-- /api/addresses/{sub} 조회.
+- 위조 token의 sub로 /api/addresses 자기 자원 조회.
 
 S4 와의 차이:
     S4 — 정상 TTL(600s) 토큰으로 다수 sub enumeration(폭) → ip_user_diversity
@@ -76,7 +76,7 @@ def run_s8(count: int = 8, token_ttl: int = 7200, interval: float = 1.0):
         for victim_id in pool:
             # ★ ttl_seconds 를 비정상값으로 — forge_token 이 그대로 exp 에 반영
             token = forge_token(victim_id, ttl_seconds=token_ttl)
-            path = f"/api/addresses/{victim_id}"
+            path = "/api/addresses"
             try:
                 resp = call_api(session, path, token, src_ip=src_ip)
                 writer.record(victim_id, src_ip, "GET", path, resp,

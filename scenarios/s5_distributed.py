@@ -1,10 +1,11 @@
 """
-S5 — IP Pool 분산 + sub 순차 (어설픈 공격자).
+S5 — IP Pool 분산 + 위조 token sub 순차 (어설픈 공격자).
 
 행위:
 - IP 풀에서 매 요청 random 추출 (단일 IP factor 회피)
-- sub는 풀을 1회만 순차 enumeration (`VICTIM_SUB_START`부터 `VICTIM_COUNT`명)
+- sub는 풀을 1회만 순차 순회 (`VICTIM_SUB_START`부터 `VICTIM_COUNT`명)
 - 매 호출마다 새 jti (key 탈취 가정, forge_token)
+- 각 위조 토큰으로 자기 자원 endpoint(`/api/addresses`) 호출
 
 회피하는 신호:
 - 단일 IP × 다수 sub (5분 윈도우 다양성) — 풀 분산으로 회피
@@ -17,7 +18,7 @@ S5 — IP Pool 분산 + sub 순차 (어설픈 공격자).
   않다 — Route B(ASN 다양성)가 그 자리를 대신해 S5를 탐지한다.
 
 핵심 메시지:
-    "IP만 가린 분산 enumeration". UBA의 ASN 단위 다양성 집계(Route B)로 탐지된다.
+    "IP만 가린 분산 위조 토큰 접근". UBA의 ASN 단위 다양성 집계(Route B)로 탐지된다.
 
 S4 / S5b와의 차이 (셋 다 각 사용자 정확히 1회 방문, 총 `VICTIM_COUNT`건):
     S4  — 단일 IP, sub 순차
@@ -95,7 +96,7 @@ def run_s5(
             # IP는 매 요청 random, sub는 순차 단조 증가
             src_ip = rng.choice(ip_pool)
             token = forge_token(victim_id)
-            path = f"/api/addresses/{victim_id}"
+            path = "/api/addresses"
 
             try:
                 resp = call_api(session, path, token, src_ip=src_ip)
