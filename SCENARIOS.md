@@ -58,8 +58,8 @@ auth-server가 **진짜 ES256+KMS 서명 토큰**을 발급. `jti`, `iat`, `auth
 | 주체 | **Victim** | 일반 사용자가 앱 켜놓고 자기 데이터 확인하는 패턴 재현 |
 | source IP (XFF) | `222.110.15.50` (KT residential) | 변화 없음 — 로그인했을 때와 동일 회선 |
 | 사용 토큰 | P0에서 발급된 access_token 그대로 | 정상 사용자가 자기 토큰 들고 쓰는 것 |
-| endpoint 분포 | `/api/users/me` 70% · `/api/orders/{sub}` 20% · `/api/addresses/{sub}` 10% | "me는 자주, 민감 정보는 가끔" — 일반 사용 패턴 |
-| path의 user_id | 항상 자기 user_id (`victim_id == sub`) | IDOR 활용 없음, 자기 자원만 조회 |
+| endpoint 분포 | `/api/users/me` 70% · `/api/orders` 20% · `/api/addresses` 10% | "me는 자주, 민감 정보는 가끔" — 일반 사용 패턴 |
+| 자원 범위 | token `sub`의 자기 자원 | path 사용자 ID를 사용하지 않음 |
 | 호출 간격 | `random.uniform(15, 45)` 초 | 사람이 화면 보면서 천천히 누르는 페이스 |
 | 5분간 총 호출 | 평균 약 7~13건 (간격 평균 30초) | baseline 활동량 |
 | HTTP 헤더 | `Authorization: Bearer {token}` + `XFF: 222.110.15.50` | |
@@ -78,8 +78,8 @@ auth-server가 **진짜 ES256+KMS 서명 토큰**을 발급. `jti`, `iat`, `auth
 | 주체 | **Attacker** | XSS/MITM/저장소 탈취 등으로 토큰 가로챈 공격자 |
 | source IP (XFF) | `101.235.1.77` (Public WiFi / Cafe) | **회선 점프** — KT 가정 → 카페 공용망 |
 | 사용 토큰 | P0에서 발급된 **동일 access_token** | 탈취한 토큰 그대로 재사용. 위조 X. |
-| endpoint 분포 | `/api/addresses/{sub}` · `/api/orders/{sub}` · `/api/users/me` 균등 (`random.choice`) | 민감 정보 위주 추출. `/api/addresses` 비율 10% → ~33% 급증 |
-| path의 user_id | victim 본인 user_id | victim 자기 자원만 조준 (IDOR 활용 X) |
+| endpoint 분포 | `/api/addresses` · `/api/orders` · `/api/users/me` 균등 (`random.choice`) | 민감 정보 위주 추출. `/api/addresses` 비율 10% → ~33% 급증 |
+| 자원 범위 | 탈취 token `sub`의 자기 자원 | path 사용자 ID를 사용하지 않음 |
 | 호출 간격 | `random.uniform(2, 5)` 초 | 자동화 burst (사람 페이스 아님) |
 | 총 호출 | `--burst 8` 기본 → 약 15~30초 안에 8건 | |
 | HTTP 헤더 | `Authorization: Bearer {token}` + `XFF: 101.235.1.77` | |
@@ -153,17 +153,17 @@ t=0 ─────────────────────── 1초 1
 |---|---|---|
 | 주체 | **Attacker** (서명키 탈취 후 단일 VPS 운영) | 키만 손에 쥐고 즉시 풀 전체를 긁는 "고전적 enumeration" |
 | source IP (XFF) | `S4_SOURCE_IP = 15.164.10.40` — **AWS Seoul AS16509** 단일 | 단일 클라우드 인스턴스에서 운영 |
-| endpoint | `/api/addresses/{sub}` 단일 | 현관비번+주소+전화+이름 묶음 (가장 민감) |
+| endpoint | `/api/addresses` 단일 | 위조 token `sub`의 주소 응답 |
 | 토큰 위조 | `forge_token(sub, ttl=600)` — **매 호출마다 새 jti** | jti 기반 동일 토큰 재사용 탐지 회피 |
 | victim 풀 | `get_sequential_pool()` — `VICTIM_SUB_START`부터 `VICTIM_COUNT`명 순차 | enumeration 시 sub 단조 증가 |
-| sub-path 매칭 | 토큰의 `sub` == path의 `user_id` 항상 일치 | 정상 사용자 위장 (sub 변조 탐지 회피) |
+| 자원 선택 | 위조 token의 `sub`가 조회 대상을 결정 | 별도 사용자 ID 경로 없이 정상 사용자로 위장 |
 | 호출 페이스 | `rps=1.0` → 1초당 1건 = 분당 60건 | 빠르지만 rate-limit 피하는 페이스 |
 | 가동 시간 | `--duration` 또는 pool(`VICTIM_COUNT`명) 소진 시 종료 | sample 100 → 약 1분 40초 / 풀 전체 498 → 약 8분 |
 
 ### 매 호출의 HTTP
 
 ```http
-GET /api/addresses/140000002 HTTP/1.1
+GET /api/addresses HTTP/1.1
 Authorization: Bearer eyJhbGciOiJFUzI1NiIsImtpZCI6Im..."  ← 매번 jti만 새로
 X-Forwarded-For: 15.164.10.40
 ```
@@ -221,7 +221,7 @@ sub가 띄엄띄엄 흩어져 보이지만, 풀 전체 합산하면 sub가 단�
 | source IP (XFF) | `lib/ip_pool.get_distributed_ips()` 풀 (4종 prefix · 옥텟 100~254) | 매 요청 random |
 | IP 풀 크기 | `S5_IP_POOL_SIZE` (기본 0 → `VICTIM_COUNT × 0.68` 자동. sample 100→68 / 풀 전체 498→340) | 쿠팡 비율 |
 | 매 요청 IP 선택 | `rng.choice(ip_pool)` | 균등 random |
-| endpoint | `/api/addresses/{sub}` 단일 | S4와 동일 |
+| endpoint | `/api/addresses` 단일 | S4와 동일; 대상은 위조 token `sub` |
 | 토큰 위조 | `forge_token(sub)` — 매 호출 새 jti | 키 탈취 가정 |
 | victim 풀 | `get_sequential_pool()` — `START`부터 `VICTIM_COUNT`명 | **순차 1회 순회** |
 | **sub 선택** | **`START`부터 순차 순회** | **글로벌 sub 단조 증가** |
@@ -231,7 +231,7 @@ sub가 띄엄띄엄 흩어져 보이지만, 풀 전체 합산하면 sub가 단�
 ### 매 호출의 HTTP
 
 ```http
-GET /api/addresses/140000273 HTTP/1.1   ← sub 순차 (272 → 273 → 274 → ...)
+GET /api/addresses HTTP/1.1             ← token sub 순차 (272 → 273 → 274 → ...)
 Authorization: Bearer ...               ← 새 jti
 X-Forwarded-For: 45.32.118.214          ← random IP from pool
 ```
@@ -298,7 +298,7 @@ victim을 범위에서 **랜덤 비복원 추출**(각 1회 방문), IP는 매 �
 | 주체 | **Attacker** (botnet/VPS 풀 다수 운영) | IP를 잔뜩 굴려 sub 시퀀스 패턴까지 지운 공격자 |
 | source IP (XFF) | S5와 동일 (4종 prefix 풀 random) | 매 요청 random |
 | IP 풀 크기 | S5와 동일 (`VICTIM_COUNT × 0.68`) | |
-| endpoint | `/api/addresses/{sub}` 단일 | |
+| endpoint | `/api/addresses` 단일 | 대상은 위조 token `sub` |
 | 토큰 위조 | `forge_token(sub)` — 매 호출 새 jti | 키 탈취 가정 |
 | **sub 선택** | **`get_shuffled_pool(seed=None)` — 범위에서 `VICTIM_COUNT`명 랜덤 비복원 추출, 각 1회** | 순차 패턴 제거 + 매 실행 다른 표본 |
 | 총 호출 수 | **`VICTIM_COUNT`건 (S4·S5와 동일)** | 호출량 통일 |
@@ -307,7 +307,7 @@ victim을 범위에서 **랜덤 비복원 추출**(각 1회 방문), IP는 매 �
 ### 매 호출의 HTTP
 
 ```http
-GET /api/addresses/140000273 HTTP/1.1   ← random sub
+GET /api/addresses HTTP/1.1             ← token sub random
 Authorization: Bearer ...               ← 새 jti
 X-Forwarded-For: 45.32.118.214          ← random IP from pool
 ```
@@ -357,7 +357,7 @@ factor 발동 여부의 차이가 곧 회피 전략의 차이로 환원된다.
 t=0 ──── 30~60s sleep ──── ... ──── 분당 1~2건 ──── ... ──── t=6h ─── ... ─── t=24h
  │                                                                                  │
  │ pool[0] (random shuffle)                                                          │
- │   GET /api/addresses/{shuffled[0]}                                                │
+ │   GET /api/addresses with token sub=shuffled[0]                                   │
  │   XFF=98.138.10.66 (US Residential)                                               │
  │                                                                                   │
  │ ──┴── 30~60s sleep ──┬──                                                          │
@@ -376,7 +376,7 @@ S4와 동일 메커니즘(단일 IP, 키 위조)인데 **시간을 7개월 늘�
 |---|---|---|
 | 주체 | **Attacker** (해외 가정 회선 또는 그 회선 봇넷 일부) | 7개월 미탐지 재현 |
 | source IP (XFF) | `S6_SOURCE_IP = 98.138.10.66` — **US Residential** 단일 | 한국 사용자(`140000xxx`) 풀과 지리적 이상 |
-| endpoint | `/api/addresses/{sub}` 단일 | S4와 동일 |
+| endpoint | `/api/addresses` 단일 | S4와 동일; 대상은 위조 token `sub` |
 | 토큰 위조 | `forge_token(sub)` — 매 호출 새 jti | 키 탈취 가정 |
 | victim 풀 | `get_shuffled_pool(seed=42)` — 범위에서 `VICTIM_COUNT`명 랜덤 추출 | sub 단조 증가 패턴 숨김 |
 | 호출 페이스 | `random.uniform(30, 60)` 초 sleep = 분당 1~2건 | **5분 윈도우 z-score 미달** |
@@ -385,7 +385,7 @@ S4와 동일 메커니즘(단일 IP, 키 위조)인데 **시간을 7개월 늘�
 ### 매 호출의 HTTP
 
 ```http
-GET /api/addresses/140000337 HTTP/1.1   ← shuffled 순서
+GET /api/addresses HTTP/1.1             ← token sub shuffled 순서
 Authorization: Bearer ...               ← 새 jti
 X-Forwarded-For: 98.138.10.66           ← 미국 가정 IP 단일
 ```
@@ -442,7 +442,7 @@ X-Forwarded-For: 98.138.10.66           ← 미국 가정 IP 단일
 코드 수정 지시 전에 본 문서에서 확인하고 싶을 것들:
 
 - [ ] **S2**: P1/P2의 endpoint 가중치, 호출 간격, burst 횟수가 의도와 맞는지
-- [ ] **S2**: victim의 IDOR 활용 여부 (현재 X — victim 자기 자원만 조회)
+- [x] **S2**: 탈취 token `sub`의 자기 자원 API만 조회
 - [ ] **S4**: 풀 순차 vs shuffled (S4=순차, S6=shuffled — 패턴 차이 확실한지)
 - [ ] **S4**: `--rps 1.0` 페이스가 적정한지 (분당 60건 = `VICTIM_COUNT`건, sample 100을 약 1분 40초 / 풀 전체 498을 약 8분에 소진)
 - [ ] **S5/S5b**: 호출량이 S4와 동일하게 `VICTIM_COUNT`건(각 1회)으로 통일되어 있는지 — UBA factor 비교 시 변량을 IP/sub 선택 전략 하나로만 좁히려는 의도

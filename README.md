@@ -12,7 +12,7 @@
 
 ## ⚡ 30초 요약
 
-ZETI 백엔드(`backend`) 의 의도된 4 취약점을 공격하는 **6 시나리오 시뮬레이터** + **lib/** 공통 모듈. 위조 트래픽이 ALB → Nginx PEP → API 흐름에 흘러 들어가, `log-pipeline` 의 ingest pipeline 이 분해·보강한 뒤 `uba-analyzer` 가 7 팩터로 잡아내는지 검증합니다. **JWT ES256 위조 / IP 분산 / XFF 위조 / Slow & Low / 토큰 하이재킹 / 장수명 토큰** 6 종.
+ZETI 백엔드(`backend`) 의 JWT 위협을 검증하는 **6 시나리오 시뮬레이터** + **lib/** 공통 모듈. 위조 트래픽이 ALB → Nginx PEP → API 흐름에 흘러 들어가, `log-pipeline` 의 ingest pipeline 이 분해·보강한 뒤 `uba-analyzer` 가 7 팩터로 잡아내는지 검증합니다. **JWT ES256 위조 / IP 분산 / XFF 위조 / Slow & Low / 토큰 하이재킹 / 장수명 토큰** 6 종.
 
 - 🎯 **6 공격 시나리오**: S2 토큰 하이재킹 · S4 단일 IP enumeration · S5 분산 (sub 순차) · S5b 분산 (sub random) · S6 Slow&Low + Impossible Travel · S8 장수명 토큰
 - 🔑 **ES256 키 위조**: KMS 외부 alias 키 탈취 가정 → `lib/token_forge.py` 로 임의 sub 토큰 생성
@@ -83,12 +83,12 @@ X-Forwarded-For: <시뮬이 박은 src_ip>, <시뮬 머신 진짜 IP>, <ALB IP>
 
 | ID | 이름 | source IP (prefix) | endpoint | 페이스 | 풀 | 잡혀야 할 팩터 |
 |----|------|-------------------|---------|--------|-----|---------------|
-| **S2** | Token Hijack | victim `222.110.15.50` (KT) → attacker `101.235.1.77` (Cafe) | `/api/users/me`, `/api/orders/{sub}`, `/api/addresses/{sub}` | 1단계: 15~45s / 2단계: 2~5s burst | 단일 victim 1명 | `token_replay` (jti 공유 + ip_class 교차) |
-| **S4** | Enumeration | `15.164.10.40` (AWS Seoul) 단일 | `/api/addresses/{sub}` | 1.0 RPS | `VICTIM_COUNT` 명 순차 | `ip_user_diversity` override → 100 |
-| **S5** | Distributed (sub 순차) | 4종 prefix 풀 random | `/api/addresses/{sub}` | 1.0s | `VICTIM_COUNT` 명 순차 | **글로벌 sub 시퀀스** (Route B ASN 다양성) |
-| **S5b** | Distributed (sub random) | 위 동일 풀 random | `/api/addresses/{sub}` | 1.0s | `VICTIM_COUNT` 명 랜덤 비복원 | `F-FirstSeen-Sensitive` 등 보완 factor |
-| **S6** | Slow & Low | `98.138.10.66` (US Residential) 단일 | `/api/addresses/{sub}` | 30~60s sleep | `VICTIM_COUNT` 명 랜덤 | `cumulative_exfil` 24h z 폭증 + Impossible Travel |
-| **S8** | 장수명 토큰 | 단일 IP | `/api/addresses/{sub}` | 정상 페이스 | victim 수 적게 | `token_violation` T007 (exp-iat>3600) → 80 |
+| **S2** | Token Hijack | victim `222.110.15.50` (KT) → attacker `101.235.1.77` (Cafe) | `/api/users/me`, `/api/orders`, `/api/addresses` | 1단계: 15~45s / 2단계: 2~5s burst | 단일 victim 1명 | `token_replay` (jti 공유 + ip_class 교차) |
+| **S4** | Forged-sub Sweep | `15.164.10.40` (AWS Seoul) 단일 | `/api/addresses` | 1.0 RPS | 위조 token `sub`를 `VICTIM_COUNT` 명 순차 | `ip_user_diversity` override → 100 |
+| **S5** | Distributed (sub 순차) | 4종 prefix 풀 random | `/api/addresses` | 1.0s | 위조 token `sub`를 `VICTIM_COUNT` 명 순차 | **글로벌 sub 시퀀스** (Route B ASN 다양성) |
+| **S5b** | Distributed (sub random) | 위 동일 풀 random | `/api/addresses` | 1.0s | 위조 token `sub`를 랜덤 비복원 | `F-FirstSeen-Sensitive` 등 보완 factor |
+| **S6** | Slow & Low | `98.138.10.66` (US Residential) 단일 | `/api/addresses` | 30~60s sleep | 위조 token `sub`를 랜덤 순회 | `cumulative_exfil` 24h z 폭증 + Impossible Travel |
+| **S8** | 장수명 토큰 | 단일 IP | `/api/addresses` | 정상 페이스 | victim 수 적게 | `token_violation` T007 (exp-iat>3600) → 80 |
 
 ### 🎨 IP 색깔 매트릭스 (실전 ASN 기반, prefix 만 봐도 시나리오 식별)
 
@@ -135,7 +135,7 @@ python scenarios/s2_token_hijack.py --victim-minutes 5 --burst 8
 | 항목 | 값 |
 |------|---|
 | source IP | `15.164.10.40` (AWS Seoul AS16509) 단일 |
-| endpoint | `/api/addresses/{sub}` 단일 |
+| endpoint | `/api/addresses` 단일; 조회 대상은 위조 token `sub`로 결정 |
 | 토큰 | `forge_token(sub, ttl=600)` — 매 호출 새 jti |
 | 페이스 | 1.0 RPS = 분당 60 건 |
 | 풀 | `get_sequential_pool()` — `VICTIM_SUB_START` 부터 순차 |
@@ -186,7 +186,7 @@ python scenarios/s6_slow_low.py --duration 6 --min-interval 30 --max-interval 60
 | 항목 | 값 |
 |------|---|
 | source IP | 단일 |
-| endpoint | `/api/addresses/{sub}` |
+| endpoint | `/api/addresses`; 조회 대상은 위조 token `sub`로 결정 |
 | 토큰 | `forge_token(sub, ttl=7200)` — **장수명 (정상 600s 의 12배)** |
 | 폭 신호 | 없음 (victim 적음) |
 
@@ -369,7 +369,7 @@ python demo_s5.py    # S5 + SSM trigger → ~5분 후 Slack
 
 | 레포 | 본 attack-simulation 과의 관계 |
 |------|-------------------------------|
-| [`backend`](https://github.com/ZETTY-ZEROTRUST/backend) | 의도된 4 취약점 + IDOR endpoint 들 — **공격 대상** |
+| [`backend`](https://github.com/ZETTY-ZEROTRUST/backend) | JWT 발급·검증과 자기 자원 API — **공격 대상** |
 | [`log-pipeline`](https://github.com/ZETTY-ZEROTRUST/log-pipeline) | XFF 위조 트래픽을 `asn-classify` 가 ip_class 분류 — **분류 검증** |
 | [`uba-analyzer`](https://github.com/ZETTY-ZEROTRUST/uba-analyzer) | 7 factor + LLM 으로 본 시뮬 트래픽 잡아냄 — **탐지 검증** |
 | [`zero-trust-architecture`](https://github.com/ZETTY-ZEROTRUST/zero-trust-architecture) | AWS 인프라 IaC — 시뮬 트래픽이 흐르는 ALB + WAF + Nginx PEP + KMS 정의 — **공격 대상 환경 정의** |
@@ -394,7 +394,7 @@ python demo_s5.py    # S5 + SSM trigger → ~5분 후 Slack
 | **MITRE ATT&CK T1199 (Trusted Relationship)** | S5/S5b 분산 IP 풀 |
 | **MITRE ATT&CK T1110.004 (Credential Stuffing)** | S4/S5 sub enumeration |
 | **MITRE ATT&CK T1078.004 (Cloud Accounts)** | S6 Impossible Travel |
-| **OWASP A01 Broken Access Control** | IDOR endpoint 표적 |
+| **OWASP API2:2023 Broken Authentication** | 탈취·위조 token 사용과 비정상 token 수명 검증 |
 | **OWASP A02 Cryptographic Failures** | ES256 키 탈취 시나리오 (S4/S5/S6/S8) |
 
 ---
