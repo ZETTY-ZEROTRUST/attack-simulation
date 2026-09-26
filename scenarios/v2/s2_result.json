@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "scenario": "v2:S2",
+    "run_id": "v2:S2-1790439058",
+    "base": "https://127.0.0.1:8443"
+  },
+  "results": {
+    "rotate_ok": 200,
+    "reuse_old_rt": 401,
+    "rotated_rt_after_reuse": 401,
+    "me_before_logout": 200,
+    "me_after_logout": 401,
+    "refresh_after_logout": 401
+  },
+  "verdict": {
+    "rotation_succeeds": true,
+    "reuse_blocked_401": true,
+    "family_revoked_on_reuse": true,
+    "at_valid_before_logout": true,
+    "at_rejected_after_logout": true,
+    "rt_revoked_after_logout": true
+  }
+}

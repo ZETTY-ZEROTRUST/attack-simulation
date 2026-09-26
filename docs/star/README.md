@@ -56,3 +56,4 @@
 |---|---|---|
 | [S-00](S-00-roadmap.md) | 공격→방어→부하 로드맵 | 기준 |
 | [S-01](S-01-bola-object-ownership.md) | BOLA 객체 소유권 차단 | 완료 |
+| [S-02](S-02-token-reuse-rotation.md) | 탈취 토큰 회수: RT 회전·재사용 폐기·매요청 상태확인 | 완료 |
