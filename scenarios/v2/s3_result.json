@@ -1,0 +1,15 @@
+{
+  "meta": {"scenario": "v2:S3", "base": "https://127.0.0.1:8443", "note": "auth-lab(profile lab)로 위조. 실행 후 lab 컨테이너 제거."},
+  "results": {
+    "legit_token_me": 200,
+    "forged_new_jti_me": 401,
+    "forged_copied_jti_me": 401,
+    "forged_ghost_me": 401
+  },
+  "verdict": {
+    "legit_ok": true,
+    "forged_new_blocked": true,
+    "forged_copied_jti_blocked": true,
+    "forged_ghost_blocked": true
+  }
+}
