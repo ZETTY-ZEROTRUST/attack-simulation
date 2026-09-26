@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "scenario": "v2:S1",
+    "run_id": "v2:S1-1790438421",
+    "base": "https://127.0.0.1:8443"
+  },
+  "results": {
+    "cross_order_detail": [
+      {
+        "order_id": 2674,
+        "status": 404
+      },
+      {
+        "order_id": 2694,
+        "status": 404
+      },
+      {
+        "order_id": 2714,
+        "status": 404
+      },
+      {
+        "order_id": 2734,
+        "status": 404
+      },
+      {
+        "order_id": 2754,
+        "status": 404
+      }
+    ],
+    "own_order_detail": {
+      "order_id": 2675,
+      "status": 200
+    },
+    "cross_address_update": [
+      {
+        "address_id": 1,
+        "status": 200
+      },
+      {
+        "address_id": 2,
+        "status": 404
+      },
+      {
+        "address_id": 3,
+        "status": 404
+      },
+      {
+        "address_id": 4,
+        "status": 404
+      },
+      {
+        "address_id": 5,
+        "status": 404
+      }
+    ],
+    "no_token": 401
+  },
+  "verdict": {
+    "cross_order_all_blocked": true,
+    "own_order_ok": true,
+    "no_token_401": true
+  }
+}
