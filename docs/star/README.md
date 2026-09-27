@@ -59,3 +59,4 @@
 | [S-02](S-02-token-reuse-rotation.md) | 탈취 토큰 회수: RT 회전·재사용 폐기·매요청 상태확인 | 완료 |
 | [S-03](S-03-key-leak-issuance-ledger.md) | 서명키 유출: 발급 대장 digest 대조 | 완료 |
 | [L-04](L-04-redis-authstate-cache.md) | 매 요청 상태확인 비용 → Redis 캐시 | 철회(재검증 중) |
+| [S-04](S-04-bff-browser-attacks.md) | B0(BFF) 브라우저 공격: 토큰 탈취·CSRF·세션 고정·프록시 우회 | 완료 |

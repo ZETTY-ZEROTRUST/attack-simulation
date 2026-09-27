@@ -1,0 +1,44 @@
+{
+  "results": {
+    "run_id": "v2:B0-1790486770",
+    "before_auth_login_exposes_tokens": true,
+    "bff_login_status": 200,
+    "bff_login_body_has_token": false,
+    "cookie_attrs": [
+      "httponly",
+      "path",
+      "samesite",
+      "secure"
+    ],
+    "cookie_ok": true,
+    "bff_session_body_has_token": false,
+    "csrf_missing_token": 403,
+    "csrf_evil_origin": 403,
+    "csrf_valid": 200,
+    "login_csrf_evil_origin": 403,
+    "fixation_planted_id_after_login": 401,
+    "injected_authorization_status": 200,
+    "injected_authorization_returned_user": "user001@zetty.test",
+    "proxy_probes": {
+      "not_allowlisted": 404,
+      "encoded_traversal": 400,
+      "dot_traversal": 400,
+      "absolute_url": 400,
+      "actuator": 404
+    },
+    "logout_status": 204,
+    "logout_revocation": "confirmed",
+    "stolen_cookie_after_logout": 401
+  },
+  "verdict": {
+    "before_exposes_tokens": true,
+    "after_no_token_in_browser": true,
+    "cookie_attributes": true,
+    "csrf_blocked": true,
+    "login_csrf_blocked": true,
+    "session_fixation_blocked": true,
+    "injected_authorization_ignored": true,
+    "proxy_bypass_blocked": true,
+    "stolen_cookie_dead_after_logout": true
+  }
+}
