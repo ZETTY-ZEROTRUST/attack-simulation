@@ -1,0 +1,1 @@
+{"write_mode": "api", "reads_after_write": 10425, "stale_reads": 416, "stale_ratio": 0.0399, "versions_seen_fresh": 9, "versions_written": 10, "time_to_fresh_ms_max": 10.0, "time_to_fresh_ms_avg": 7.6}
