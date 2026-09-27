@@ -1,0 +1,36 @@
+{
+  "run_id": "v2:S4-1790491365",
+  "scenario": "v2:S4-A",
+  "description": "정상 대조군 + 공격자 burst(넓은 route 고속 대량 조회). 인증·인가는 통과, 행동만 이상.",
+  "window": {
+    "start": "2026-09-27T06:42:45Z",
+    "end": "2026-09-27T06:43:18Z"
+  },
+  "normal_cohort": {
+    "users": 31,
+    "approx_requests": 372,
+    "routes": [
+      "/mypage",
+      "/users/me"
+    ],
+    "pace": "완만"
+  },
+  "attacker": {
+    "subject_key": "TqAeVuSuTeOKYwDdCT5tWCBOq-DTJmYGfOLVL_-KTlA",
+    "approx_requests": 13043,
+    "routes": [
+      "/mypage",
+      "/users/me",
+      "/orders?page=0&size=20",
+      "/addresses",
+      "/payments/balance",
+      "/payments/history"
+    ],
+    "pace": "20초 동안 10 스레드 burst"
+  },
+  "label_note": "이벤트에는 label이 없다. subject_key가 공격자, window 안에서 판정. subject_key는 HMAC 가명이라 신원 아님.",
+  "limits": [
+    "S4-B(다른 네트워크 동시 사용)는 edge IP가 동일해 부분만 재현",
+    "S4-C(발급대장 없는 과거 로그 사후분석)는 별도 과거 로그 주입 필요 — 미포함"
+  ]
+}
