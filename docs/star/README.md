@@ -60,3 +60,4 @@
 | [S-03](S-03-key-leak-issuance-ledger.md) | 서명키 유출: 발급 대장 digest 대조 | 완료 |
 | [L-04](L-04-redis-authstate-cache.md) | 매 요청 상태확인 비용 → Redis 캐시 | 철회(재검증 중) |
 | [S-04](S-04-bff-browser-attacks.md) | B0(BFF) 브라우저 공격: 토큰 탈취·CSRF·세션 고정·프록시 우회 | 완료 |
+| [S-05 start](../scenarios/v2/start_jwt.py) | v2:start JWT 검증 재공격(위조 9종 401) | 완료(러너) |

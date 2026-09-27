@@ -1,0 +1,26 @@
+{
+  "results": {
+    "run_id": "v2:start-1790489904",
+    "valid_token": 200,
+    "alg_none": 401,
+    "garbage": 401,
+    "empty": 401,
+    "lab_available": "yes",
+    "forged": {
+      "forged_but_valid_claims_not_in_ledger": 401,
+      "wrong_issuer": 401,
+      "wrong_audience": 401,
+      "wrong_typ": 401,
+      "no_exp": 401,
+      "future_iat": 401,
+      "over_max_lifetime": 401,
+      "missing_sub": 401
+    }
+  },
+  "verdict": {
+    "valid_ok": true,
+    "alg_none_blocked": true,
+    "garbage_blocked": true,
+    "all_forged_blocked": true
+  }
+}
