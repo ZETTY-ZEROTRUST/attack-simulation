@@ -8,7 +8,7 @@
 
 - A-06 이후 보호 요청마다 ACCESS_DECISION 이벤트를 Outbox에 INSERT한다(쓰기 요청은 BUSINESS_RESULT까지 2건).
 - `/mypage`는 캐시로 DB 조회를 줄였는데(B-03), 감사 기록 때문에 **요청마다 DB 쓰기가 새로 생겼다.**
-- relay(0.5코어)·indexer(0.5코어)·ES(단일 노드)가 유입 속도를 못 따라가면 Outbox에 미전달 이벤트가 쌓이고, 탐지(UBA)는 그만큼 늦은 데이터를 본다.
+- relay(0.5코어)·indexer(0.5코어)·ES(단일 노드)가 유입 속도를 못 따라가면 Outbox에 미전달 이벤트가 쌓이고, 탐지(log-pipeline)는 그만큼 늦은 데이터를 본다.
 
 ## T — 목표
 
