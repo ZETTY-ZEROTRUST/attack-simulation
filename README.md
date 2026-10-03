@@ -13,3 +13,7 @@ ZETTY **v2 공격 시나리오**. `backend`의 인증·인가·행동 이상을 
 STAR 문서: `docs/star/S-00 ~ S-06`. 부하 테스트: `load/`.
 
 > v1(레거시) 시나리오·데모·문서(s2_token_hijack/s4_enumeration/s5/s5b/s6/s8, demo_*, run.sh, SCENARIOS.md)는 제거됨. 현재 활성 세트는 v2다.
+
+## Labeled HTTP evaluation data
+
+See [S4 HTTP dataset runner](datasets/s4_http/README.md) for bounded real-time capture, separate ground truth, feature contract, and quality gates. Capture results are ignored under `results/s4-http/`.

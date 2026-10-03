@@ -1,0 +1,61 @@
+{
+  "capture_id": "20261003T084437211295Z",
+  "source_version_note": "Initial capture did not snapshot source at startup; future runner captures source hashes.",
+  "elapsed_seconds": 605.2995641231537,
+  "quality": {
+    "status": "pass",
+    "pass": true,
+    "request_count": 5532,
+    "actor_window_count": 200,
+    "transport_errors": 0,
+    "non_2xx_requests": 0,
+    "missing_request_ids": 0,
+    "duplicate_request_ids": 0,
+    "missing_verified_actor_join": 0,
+    "inconsistent_actor_mappings": 0,
+    "invalid_windows": [],
+    "split_counts": {
+      "train": {
+        "normal": 60,
+        "attack": 0
+      },
+      "calibration": {
+        "normal": 40,
+        "attack": 0
+      },
+      "test": {
+        "normal": 95,
+        "attack": 5
+      }
+    }
+  },
+  "profile_counts": {
+    "normal_slow": 95,
+    "normal_burst": 52,
+    "normal_active": 48,
+    "s4_repeated": 2,
+    "s4_broad": 1,
+    "s4_burst": 2
+  },
+  "verified_actor_unique_count": 20,
+  "split_boundaries": {
+    "train": {
+      "start": "2026-10-03T08:44:41.707864Z",
+      "end": "2026-10-03T08:47:41.736038Z"
+    },
+    "calibration": {
+      "start": "2026-10-03T08:47:43.658033Z",
+      "end": "2026-10-03T08:49:43.686640Z"
+    },
+    "test": {
+      "start": "2026-10-03T08:49:45.551017Z",
+      "end": "2026-10-03T08:54:45.736303Z"
+    }
+  },
+  "file_sha256": {
+    "manifest.json": "b94f0891060ce62308e9671b5004cf38c0707e2de78c06183e704bbcb91957bb",
+    "features.csv": "3e1aa3f63cc573482f2f76291a8d3facd8eb456eeb725731c671d1372f11f8f0",
+    "labels.csv": "ae0e19783ded3ea24f9ad3946bf455778757f84a66274a1037f1105fb500d480",
+    "quality.json": "f55594e19c195ce7d9ef967421078de55d187c221abb85f4abd79ae469d0d356"
+  }
+}
