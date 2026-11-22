@@ -1,19 +1,5 @@
-# attack-simulation
+# ZETTY 공격·정상 시나리오
 
-ZETTY **v2 공격 시나리오**. `backend`의 인증·인가·행동 이상을 실제로 공격해 방어·탐지를 검증한다.
+기존 공격·부하 실행기와 측정 기록을 정리했다. 새 보안 시나리오 네 가지의 정의는 후속 문서 커밋에서 반영한다.
 
-## 시나리오 (`scenarios/v2/`)
-- `start_jwt.py` — 변조·비정상 JWT 거부 (v2:start)
-- `b0_bff_browser.py` — BFF 브라우저 공격 (토큰 탈취·CSRF·세션 고정·프록시 우회)
-- `s1_bola.py` — BOLA (객체 소유권)
-- `s2_token_reuse.py` — RT 회전·재사용 감지·폐기
-- `s3_key_leak.py` — 서명키 유출 위조 → 발급대장
-- `s4_behavior.py` — 행동 이상 트래픽(탐지 입력) + `s4_ground_truth.json`
-
-STAR 문서: `docs/star/S-00 ~ S-06`. 부하 테스트: `load/`.
-
-> v1(레거시) 시나리오·데모·문서(s2_token_hijack/s4_enumeration/s5/s5b/s6/s8, demo_*, run.sh, SCENARIOS.md)는 제거됨. 현재 활성 세트는 v2다.
-
-## Labeled HTTP evaluation data
-
-See [S4 HTTP dataset runner](datasets/s4_http/README.md) for bounded real-time capture, separate ground truth, feature contract, and quality gates. Capture results are ignored under `results/s4-http/`.
+현재 실행 가능한 공격 runner는 없다. 실행기가 구현되기 전까지 문서를 실행 완료나 탐지 성능으로 해석하지 않는다.
