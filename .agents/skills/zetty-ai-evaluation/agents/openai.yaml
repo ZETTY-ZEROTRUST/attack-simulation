@@ -1,0 +1,4 @@
+interface:
+  display_name: "ZETTY Jev 평가"
+  short_description: "Jev 행동 판단·보고서 근거와 독립 평가를 설계합니다."
+  default_prompt: "$zetty-ai-evaluation 스킬을 사용해 현재 요청의 근거와 변경·검증 범위를 정리해줘."
