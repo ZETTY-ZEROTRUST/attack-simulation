@@ -1,0 +1,4 @@
+interface:
+  display_name: "ZETTY 시나리오 설계"
+  short_description: "공식 사례에서 공격·정상 대조군과 관측 신호를 설계합니다."
+  default_prompt: "$zetty-scenario-design 스킬을 사용해 현재 요청의 근거와 변경·검증 범위를 정리해줘."
